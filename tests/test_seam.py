@@ -51,9 +51,21 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from pokeprism_devtools.contract import mount as m  # noqa: E402
 from pokeprism_devtools import contract as seam  # noqa: E402
 from pokeprism_devtools import contract  # noqa: E402
+from pokeprism_devtools.contract import conformance  # noqa: E402
 
-TREES = {"prism": "pokeprism", "vanilla": "pokecrystal",
-         "polished": "polishedcrystal"}
+#: Where a tree for each registered plugin is checked out. Keyed by the name the
+#: plugin registers under, so the battery covers **whatever this repo ships** —
+#: three adapters here, two in the IDE's own repo, one in prism's. A hand-written
+#: list of adapters would instead make this a monorepo instrument, failing a repo
+#: for the adapters it does not carry rather than checking the one it does.
+CHECKOUTS = {"prism": "pokeprism", "vanilla": "pokecrystal",
+             "polished": "polishedcrystal"}
+
+
+def registered_plugins() -> list[str]:
+    """The plugin names installed here, whoever shipped them."""
+    from importlib.metadata import entry_points
+    return sorted(e.name for e in entry_points(group=m._GROUP))
 
 _failures = 0
 _quiet = False          # set while running the battery *against a stub*
@@ -93,7 +105,13 @@ def mounted() -> dict[str, seam.Hack]:
     is skipped loudly — a battery that silently covers one adapter is worse
     than no battery, because the report still says "all ok"."""
     out = {}
-    for name, folder in TREES.items():
+    plugins = registered_plugins()
+    say(f"  plugins registered here: {', '.join(plugins) or 'none'}")
+    for name in plugins:
+        folder = CHECKOUTS.get(name)
+        if folder is None:
+            say(f"  SKIP {name}: no checkout is recorded for it")
+            continue
         root = Path.home() / "code" / folder
         if not root.exists():
             say(f"  SKIP {name}: no checkout at {root}")
@@ -103,31 +121,19 @@ def mounted() -> dict[str, seam.Hack]:
 
 
 # -- the surface ----------------------------------------------------------- #
+# The battery itself is `contract.conformance`, shipped rather than kept here:
+# an adapter written outside this tree needs the same check, and a kit only this
+# repo's tests can run is a kit nobody outside can use. What stays here is the
+# reporting — one `check` line per protocol, naming the problems if any.
 def methods(proto: type) -> list[str]:
-    return sorted(n for n, _ in inspect.getmembers(proto, inspect.isfunction)
-                  if not n.startswith("_"))
-
-
-def shape(fn) -> list[tuple[str, str, bool]]:
-    """A signature reduced to what has to agree: each parameter's name, kind,
-    and whether it has a default. `self` is dropped — the protocol declares it
-    and a bound method does not."""
-    params = list(inspect.signature(fn).parameters.values())
-    return [(p.name, str(p.kind), p.default is not inspect.Parameter.empty)
-            for p in params if p.name != "self"]
+    return conformance.protocol_methods(proto)
 
 
 def conforms(obj, proto: type, who: str) -> None:
     """`obj` answers everything `proto` declares, with the same parameters."""
-    for name in methods(proto):
-        have = getattr(type(obj), name, None)
-        if have is None:
-            check(f"{who} answers {proto.__name__}.{name}", False,
-                  "the method is missing entirely")
-            continue
-        want, got = shape(getattr(proto, name)), shape(have)
-        check(f"{who}.{name}{inspect.signature(getattr(proto, name))}",
-              want == got, f"declared {want}, found {got}")
+    problems = conformance.check_protocol(obj, proto)
+    check(f"{who} conforms to {proto.__name__}",
+          not problems, "; ".join(str(pr) for pr in problems))
 
 
 def test_surface(hacks: dict[str, seam.Hack]) -> None:
