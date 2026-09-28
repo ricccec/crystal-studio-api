@@ -222,14 +222,29 @@ def adapter_edges() -> set[tuple[str, str]]:
 
 
 def test_no_adapter_imports_the_ide() -> None:
+    """No adapter *in this repo* imports the IDE.
+
+    The survivor list is narrowed to the files this repo actually carries before
+    it is asserted in the second direction. It is the only honest way to ask the
+    question once the products are separate distributions: the contract's own
+    repo has no `hacks/` at all, and prism's has no `vanilla/`, so demanding
+    every survivor unconditionally asks a repo to account for files that belong
+    to somebody else. What it still catches is the thing the list exists for — a
+    survivor whose file is here and whose edge has quietly gone.
+    """
     print("\nno adapter outside the IDE's own product imports it")
     edges = adapter_edges()
+    present = {(f, m) for f, m in SURVIVORS if (PKG / f).exists()}
+    absent = SURVIVORS - present
+    if absent:
+        print(f"         ({len(absent)} survivor(s) belong to a product this repo "
+              f"does not carry: {sorted(f for f, _ in absent)})")
     check("every remaining edge is a known survivor", edges <= SURVIVORS,
           f"new: {sorted(edges - SURVIVORS)}")
-    check("every known survivor is still there — this list is not a wishlist",
-          SURVIVORS <= edges, f"gone: {sorted(SURVIVORS - edges)}")
-    check("every survivor is vanilla reaching the generic new-map form — a\n"
-          "         C->C edge, legal because vanilla ships with the IDE",
+    check("every survivor that is here still has its edge — not a wishlist",
+          present <= edges, f"gone: {sorted(present - edges)}")
+    check("every declared survivor is vanilla reaching the generic new-map form\n"
+          "         — a C->C edge, legal because vanilla ships with the IDE",
           {m for _, m in SURVIVORS} == {"studio.mapadd"}
           and {f.split("/")[1] for f, _ in SURVIVORS} == {"vanilla"},
           str(sorted(SURVIVORS)))
@@ -299,15 +314,28 @@ def test_falsified(mods: list[Path]) -> None:
 
     # 2 · the runtime probe would have to *see* a stray. Prove the probe reports
     #     what is loaded rather than an empty set it can never fail on.
-    probe = _PROBE.format(src=str(SRC)).replace(
-        "import pokeprism_devtools.contract;",
-        "import pokeprism_devtools.contract, pokeprism_devtools.maplint;")
-    out = subprocess.run([sys.executable, "-c", probe],
-                         capture_output=True, text=True, check=True)
-    seen = {m for m in out.stdout.strip().split(",") if m}
-    check("the runtime probe would have seen a stray import",
-          any(m.startswith("pokeprism_devtools.maplint") for m in seen),
-          "the probe reports nothing, so it can never fail")
+    #
+    #     The stray is whichever forbidden package this repo actually carries.
+    #     Any one of them named outright belongs to one product, and importing it
+    #     where it is not shipped fails the subprocess rather than the check. A
+    #     repo carrying none of them cannot run this half and says so, which is
+    #     the desired state and not a hole: what is being demonstrated is that a
+    #     stray *would* be seen.
+    stray = next((name for name in FORBIDDEN
+                  if (PKG / name).exists()), None)
+    if stray is None:
+        print("         (no forbidden package is shipped here, so there is no "
+              "stray to demonstrate with)")
+    else:
+        probe = _PROBE.format(src=str(SRC)).replace(
+            "import pokeprism_devtools.contract;",
+            f"import pokeprism_devtools.contract, pokeprism_devtools.{stray};")
+        out = subprocess.run([sys.executable, "-c", probe],
+                             capture_output=True, text=True, check=True)
+        seen = {m for m in out.stdout.strip().split(",") if m}
+        check(f"the runtime probe would have seen a stray ({stray})",
+              any(m.startswith(f"pokeprism_devtools.{stray}") for m in seen),
+              "the probe reports nothing, so it can never fail")
 
     # 3 · a new adapter->IDE edge, and a survivor that quietly disappeared.
     check("a new edge is rejected",
