@@ -17,7 +17,7 @@ category between "a hack" and "hack-agnostic". Now each hack answers for itself:
 `claims(root)` returns the built adapter, nothing, or a :class:`NearMiss` with a
 reason, and this loop only counts the claims and collects the reasons.
 
-Registration is entry points (`[project.entry-points."pokeprism_devtools.hacks"]`
+Registration is entry points (`[project.entry-points."crystal_studio.plugins"]`
 in `pyproject.toml`), so the three in-tree hacks register through the identical
 path a `pip install`ed third-party adapter would — the only way to learn whether
 the plugin seam works before someone depends on it. `--hack-path` (`hack_path`
@@ -35,7 +35,7 @@ from typing import Callable
 
 from .hack import Hack
 
-_GROUP = "pokeprism_devtools.hacks"
+_GROUP = "crystal_studio.plugins"
 
 
 class UnknownTree(RuntimeError):
