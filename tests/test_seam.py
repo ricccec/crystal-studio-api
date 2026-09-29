@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import inspect
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
@@ -345,11 +346,52 @@ def test_falsified() -> None:
           "runtime_checkable got stricter; the comment above is now wrong")
 
 
+def test_an_empty_registry_blames_nobody(tmp: Path) -> None:
+    """What `mount` says when no adapter is registered at all.
+
+    The hardest branch to reach by accident and the easiest to get wrong: it is
+    only entered when the entry-point group is empty, which never happens in a
+    developer's own environment. The registry is emptied here rather than waited
+    for.
+
+    Two things are asserted, and the second is the point. It must not call the
+    tree unrecognised, because no adapter looked at it; and it must not assert a
+    broken install, because an adapter is a separate distribution and *not yet
+    installed* is a legitimate state rather than a fault.
+    """
+    say("\nan empty registry explains itself without blaming the tree")
+    real = m._get_registered_hacks
+    m._get_registered_hacks = lambda hack_path: []
+    try:
+        message = str(tried_message(lambda: m.mount(tmp)))
+    finally:
+        m._get_registered_hacks = real
+
+    check("it raises UnknownTree rather than mounting nothing", bool(message))
+    check("it names the entry-point group that is empty", m._GROUP in message,
+          message)
+    check("it does not call the tree unclaimed — nothing looked at it",
+          "no adapter claims" not in message, message)
+    check("it does not assert a broken install, which an empty group is not",
+          "incomplete" not in message and "reinstall" not in message, message)
+
+
+def tried_message(fn) -> Exception | None:
+    """The exception `fn` raised, or None. `tried` answers only whether."""
+    try:
+        fn()
+    except Exception as exc:
+        return exc
+    return None
+
+
 if __name__ == "__main__":
     hacks = mounted()
     test_surface(hacks)
     test_records(hacks)
     test_unreadable(hacks)
     test_falsified()
+    with tempfile.TemporaryDirectory() as d:
+        test_an_empty_registry_blames_nobody(Path(d))
     print(f"\n{'FAILURES: ' + str(_failures) if _failures else 'all ok'}")
     sys.exit(1 if _failures else 0)

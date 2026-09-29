@@ -98,12 +98,16 @@ def mount(root: Path, hack_path: Path | None = None) -> Hack:
 
 def _explain_no_claim(root: Path, missed: list[NearMiss]) -> str:
     """The message when nothing claimed: every near-miss, by hack, sorted for a
-    stable read. Empty only when no adapter is registered at all, which is its
-    own kind of broken and says so instead of blaming the tree."""
+    stable read. Empty means no adapter is registered at all, which is not the
+    tree's fault and says so — and is not necessarily anybody's fault, because an
+    adapter is a separate distribution that may simply not be installed yet.
+    Both readings of an empty registry are offered rather than one asserted."""
     if not missed:
         return (f"no adapter is registered under the {_GROUP!r} entry-point "
-                f"group, so nothing could even look at {root} — the install is "
-                "incomplete (reinstall the package).")
+                f"group, so nothing could even look at {root}. An adapter is what "
+                "teaches these tools one hack's layout, and it registers itself "
+                "when installed — so either none is installed yet, or one is on "
+                "disk and was never installed, which registers nothing.")
     reasons = "; ".join(f"{m.hack} {m.reason}"
                         for m in sorted(missed, key=lambda m: m.hack))
     return f"{root} is a tree no adapter claims: {reasons}."
