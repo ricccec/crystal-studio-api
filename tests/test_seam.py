@@ -49,6 +49,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+from pokeprism_devtools.shared import paths  # noqa: E402
 from pokeprism_devtools.contract import mount as m  # noqa: E402
 from pokeprism_devtools import contract as seam  # noqa: E402
 from pokeprism_devtools import contract  # noqa: E402
@@ -113,7 +114,7 @@ def mounted() -> dict[str, seam.Hack]:
         if folder is None:
             say(f"  SKIP {name}: no checkout is recorded for it")
             continue
-        root = Path.home() / "code" / folder
+        root = paths.find_checkout(folder)
         if not root.exists():
             say(f"  SKIP {name}: no checkout at {root}")
             continue
