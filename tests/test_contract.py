@@ -62,9 +62,9 @@ from pathlib import Path
 SRC = Path(__file__).resolve().parent.parent / "src"
 sys.path.insert(0, str(SRC))
 
-from pokeprism_devtools import contract  # noqa: E402
+from pretkit import contract  # noqa: E402
 
-PKG = SRC / "pokeprism_devtools"
+PKG = SRC / "pretkit"
 CONTRACT = PKG / "contract"
 
 #: What the contract may reach for. `shared/` is product A — a coordinate tile, a
@@ -120,9 +120,9 @@ def imported_names(path: Path) -> list[str]:
                 inside = (node.module or "").split(".")
                 names.append(inside[0] if node.level > 1 and inside else "")
             else:
-                names.append((node.module or "").replace("pokeprism_devtools.", ""))
+                names.append((node.module or "").replace("pretkit.", ""))
         elif isinstance(node, ast.Import):
-            names += [a.name.replace("pokeprism_devtools.", "") for a in node.names]
+            names += [a.name.replace("pretkit.", "") for a in node.names]
     return [n for n in names if n]
 
 
@@ -161,15 +161,15 @@ def test_the_contract_names_nothing_above_itself() -> list[Path]:
 
 _PROBE = (
     "import sys; sys.path.insert(0, {src!r});"
-    "import pokeprism_devtools.contract;"
+    "import pretkit.contract;"
     "print(','.join(sorted(m for m in sys.modules"
     " if m.split('.')[0] == 'textual'"
-    " or m.startswith('pokeprism_devtools.'))))"
+    " or m.startswith('pretkit.'))))"
 )
 
 
 def loaded_by_importing_contract() -> set[str]:
-    """The modules a bare `import pokeprism_devtools.contract` leaves behind.
+    """The modules a bare `import pretkit.contract` leaves behind.
 
     A subprocess, because this test's own imports have already loaded half the
     repo — asking `sys.modules` in *this* interpreter would answer about the test
@@ -189,7 +189,7 @@ def test_importing_it_loads_nothing_else() -> None:
     check("nothing above the contract comes with it", not strays,
           ", ".join(sorted(strays)))
     check("shared/ does come with it — the dependency is real, not theoretical",
-          any(m.startswith("pokeprism_devtools.shared") for m in loaded))
+          any(m.startswith("pretkit.shared") for m in loaded))
 
 
 # --------------------------------------------------------------------------- #
@@ -298,7 +298,7 @@ def test_falsified(mods: list[Path]) -> None:
         ("an absolute import", victim.replace(
             "from dataclasses import dataclass",
             "from dataclasses import dataclass\n"
-            "import pokeprism_devtools.maplint")),
+            "import pretkit.maplint")),
     ):
         tmp = CONTRACT / "hack.py"
         names = []
@@ -306,9 +306,9 @@ def test_falsified(mods: list[Path]) -> None:
             if isinstance(node, ast.ImportFrom):
                 inside = (node.module or "").split(".")
                 names.append(inside[0] if node.level > 1 and inside
-                             else (node.module or "").replace("pokeprism_devtools.", ""))
+                             else (node.module or "").replace("pretkit.", ""))
             elif isinstance(node, ast.Import):
-                names += [a.name.replace("pokeprism_devtools.", "") for a in node.names]
+                names += [a.name.replace("pretkit.", "") for a in node.names]
         caught = any(n.split(".")[0] in FORBIDDEN for n in names if n)
         check(f"the static check catches {label}", caught, f"{tmp.name}: {names}")
 
@@ -328,13 +328,13 @@ def test_falsified(mods: list[Path]) -> None:
               "stray to demonstrate with)")
     else:
         probe = _PROBE.format(src=str(SRC)).replace(
-            "import pokeprism_devtools.contract;",
-            f"import pokeprism_devtools.contract, pokeprism_devtools.{stray};")
+            "import pretkit.contract;",
+            f"import pretkit.contract, pretkit.{stray};")
         out = subprocess.run([sys.executable, "-c", probe],
                              capture_output=True, text=True, check=True)
         seen = {m for m in out.stdout.strip().split(",") if m}
         check(f"the runtime probe would have seen a stray ({stray})",
-              any(m.startswith(f"pokeprism_devtools.{stray}") for m in seen),
+              any(m.startswith(f"pretkit.{stray}") for m in seen),
               "the probe reports nothing, so it can never fail")
 
     # 3 · a new adapter->IDE edge, and a survivor that quietly disappeared.

@@ -9,7 +9,7 @@ description = "Write a Crystal Studio plugin for your own Pokémon Gen-2 hack"
 requires-python = ">=3.10"
 dependencies = ["pret-toolkit"]
 
-# `namespaces = true` is the whole split: `pokeprism_devtools` is a
+# `namespaces = true` is the whole split: `pretkit` is a
 # PEP 420 namespace package with no `__init__.py`, so these
 # distributions install side by side and answer as one package.
 [tool.setuptools.packages.find]

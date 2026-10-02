@@ -49,11 +49,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from pokeprism_devtools.shared import paths  # noqa: E402
-from pokeprism_devtools.contract import mount as m  # noqa: E402
-from pokeprism_devtools import contract as seam  # noqa: E402
-from pokeprism_devtools import contract  # noqa: E402
-from pokeprism_devtools.contract import conformance  # noqa: E402
+from pretkit.shared import paths  # noqa: E402
+from pretkit.contract import mount as m  # noqa: E402
+from pretkit import contract as seam  # noqa: E402
+from pretkit import contract  # noqa: E402
+from pretkit.contract import conformance  # noqa: E402
 
 #: Where a tree for each registered plugin is checked out. Keyed by the name the
 #: plugin registers under, so the battery covers **whatever this repo ships** —
