@@ -6,7 +6,7 @@ something the rest of the suite can fail on: every test here passed with the
 cycle in place, because a cycle is a perfectly good way to run a program. So
 this file exists to fail the day the arrow turns round.
 
-Four checks, and they are deliberately different in kind:
+Three checks, and they are deliberately different in kind:
 
   * **Static** — over each `contract/` module's own import lines, by AST. Catches
     the import that is written but never executed on the happy path: a
@@ -17,22 +17,16 @@ Four checks, and they are deliberately different in kind:
     while the base lived in `studio/`, importing it ran `studio/__init__` ->
     `session` -> `maplint`, so no honest answer existed. Moving it is what makes
     the question askable, and asking it is how we know the move landed.
-  * **No adapter reaches the IDE** — over every module under `hacks/`, source
-    text, so a deferred import inside a method counts. Three of the four
-    surviving edges *are* deferred imports, which is exactly how they stayed
-    invisible to a top-of-file grep for as long as they did.
   * **The capabilities degrade to absence** — a `Hack` that declares nothing but
     a reader has no linter, no writer, no play adapter and does not measure. That
     is the rule an IDE branches on instead of on a hack's name.
 
-**The two survivors are named, not excused.** Both are `hacks/vanilla/`
-reaching `studio/mapadd.py`, which is a **C->C** edge and legal: `AddMap` is the
-generic new-map form, two of the three hacks mount it as dialects, and vanilla
-ships with the IDE. Phase 3 retired the other three — `grids` went to `asmedit/`
-and the resize form became one copy per adapter — so what this list now says is
-that **no prism module reaches the IDE at all**, asserted separately below.
-The list is asserted *exactly*, so the day one moves this file says so rather
-than quietly passing a weaker claim.
+**A fourth check used to stand here and cannot any more.** "No adapter reaches
+the IDE" scanned every module under `hacks/` for a line importing the IDE — and
+this repo is the seam, which ships no adapters at all, so the scan walked an
+empty tree and reported a clean result it had not earned. The question is only
+answerable where every product is installed at once, since each adapter is now
+its own distribution, and that is where it is asked.
 
 `test_falsified` comes last and matters most: it seeds each check with the
 mutation that check exists to catch, and fails if any of them survives. It was
@@ -75,16 +69,6 @@ ALLOWED = {"shared"}
 FORBIDDEN = ("studio", "hacks", "asmedit", "maplint", "mapfit", "mapview",
              "map_show", "map_new", "map_inspect", "metatiles", "usage",
              "gfx_view", "dev_server", "sym_lookup")
-
-#: The `hacks -> studio` edges Phase 2 leaves standing, and what each is for.
-#: Both are neutral Action subclasses over `asmedit/`; they are shared adapter
-#: machinery filed under the IDE, and they fail the contract's bar because they
-#: open files. Asserted exactly — a shorter list is progress, a longer one is a
-#: regression, and both should be somebody's decision rather than a surprise.
-SURVIVORS = {
-    ("hacks/vanilla/write.py", "studio.mapadd"),
-    ("hacks/vanilla/newmap.py", "studio.mapadd"),
-}
 
 _failures = 0
 
@@ -193,68 +177,7 @@ def test_importing_it_loads_nothing_else() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# 3 · no adapter reaches the IDE                                               #
-# --------------------------------------------------------------------------- #
-
-def adapter_edges() -> set[tuple[str, str]]:
-    """Every `(adapter file, studio module)` pair, by source line.
-
-    Line-wise and not AST on purpose: an import deferred inside a method is an
-    edge as much as one at the top, and three of the four survivors are exactly
-    that — which is how they stayed invisible to a top-of-file grep. The line
-    must *be* an import, though. Prose that says the words "import" and "studio"
-    in one sentence is a docstring explaining the rule, and `prism/write.py` has
-    one; counting it would make this check fire on its own documentation.
-    """
-    edges = set()
-    for f in sorted((PKG / "hacks").rglob("*.py")):
-        rel = f.relative_to(PKG).as_posix()
-        for line in f.read_text().split("\n"):
-            stripped = line.strip()
-            if not stripped.startswith(("from ", "import ")) or "studio" not in line:
-                continue
-            for word in line.replace(",", " ").split():
-                if word.startswith("studio.") or word == "studio":
-                    edges.add((rel, word.rstrip(".")))
-                elif ".studio." in word:
-                    edges.add((rel, "studio." + word.split(".studio.")[1]))
-    return edges
-
-
-def test_no_adapter_imports_the_ide() -> None:
-    """No adapter *in this repo* imports the IDE.
-
-    The survivor list is narrowed to the files this repo actually carries before
-    it is asserted in the second direction. It is the only honest way to ask the
-    question once the products are separate distributions: the contract's own
-    repo has no `hacks/` at all, and prism's has no `vanilla/`, so demanding
-    every survivor unconditionally asks a repo to account for files that belong
-    to somebody else. What it still catches is the thing the list exists for — a
-    survivor whose file is here and whose edge has quietly gone.
-    """
-    print("\nno adapter outside the IDE's own product imports it")
-    edges = adapter_edges()
-    present = {(f, m) for f, m in SURVIVORS if (PKG / f).exists()}
-    absent = SURVIVORS - present
-    if absent:
-        print(f"         ({len(absent)} survivor(s) belong to a product this repo "
-              f"does not carry: {sorted(f for f, _ in absent)})")
-    check("every remaining edge is a known survivor", edges <= SURVIVORS,
-          f"new: {sorted(edges - SURVIVORS)}")
-    check("every survivor that is here still has its edge — not a wishlist",
-          present <= edges, f"gone: {sorted(present - edges)}")
-    check("every declared survivor is vanilla reaching the generic new-map form\n"
-          "         — a C->C edge, legal because vanilla ships with the IDE",
-          {m for _, m in SURVIVORS} == {"studio.mapadd"}
-          and {f.split("/")[1] for f, _ in SURVIVORS} == {"vanilla"},
-          str(sorted(SURVIVORS)))
-    check("no prism module reaches the IDE at all",
-          not any(f.startswith("hacks/prism/") for f, _ in edges),
-          str(sorted(f for f, _ in edges if f.startswith("hacks/prism/"))))
-
-
-# --------------------------------------------------------------------------- #
-# 4 · a capability an adapter does not declare is absent, not broken           #
+# 3 · a capability an adapter does not declare is absent, not broken           #
 # --------------------------------------------------------------------------- #
 
 class _BareReader:
@@ -337,13 +260,7 @@ def test_falsified(mods: list[Path]) -> None:
               any(m.startswith(f"pretkit.{stray}") for m in seen),
               "the probe reports nothing, so it can never fail")
 
-    # 3 · a new adapter->IDE edge, and a survivor that quietly disappeared.
-    check("a new edge is rejected",
-          not ({("hacks/prism/read.py", "studio.tables")} | SURVIVORS) <= SURVIVORS)
-    check("a vanished survivor is rejected",
-          not SURVIVORS <= (SURVIVORS - {("hacks/vanilla/write.py", "studio.mapadd")}))
-
-    # 4 · a Hack that declares a capability must not read as absent.
+    # 3 · a Hack that declares a capability must not read as absent.
     loud = contract.Hack("stub", _BareReader(), ctx=object(), writes=object(),
                          plays=object(), measures=True)
     check("a declared capability is not absent",
@@ -356,7 +273,6 @@ def test_falsified(mods: list[Path]) -> None:
 if __name__ == "__main__":
     modules = test_the_contract_names_nothing_above_itself()
     test_importing_it_loads_nothing_else()
-    test_no_adapter_imports_the_ide()
     test_absence_is_the_default()
     test_falsified(modules)
     print(f"\n{'FAILURES: ' + str(_failures) if _failures else 'all ok'}")
