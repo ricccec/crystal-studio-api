@@ -13,7 +13,7 @@ What is checked, and what deliberately is not:
 
   * **Names and parameters**, against the Protocol, by introspection. A method
     renamed on one side is a mount that succeeds and a pane that explodes.
-  * **Record types**, by asking all three trees the nine questions for real and
+  * **Record types**, by asking every tree it finds the nine questions for real and
     checking what comes back is the seam's records — `contract.MapTables` with
     its six lists, `contract.Link`, `contract.WildMon`. Not *values*: what Route 29
     contains is `test_vanilla.py`'s business, and duplicating it here would make
@@ -25,7 +25,7 @@ What is checked, and what deliberately is not:
     at what comes out is the check that means something.
   * The two optional protocols are checked **against the declared capability**,
     both ways: an adapter must answer `measure` exactly when its `Hack` declared
-    `measures`. All three trees here declare it, and the direction that bites is
+    `measures`. Every tree found here declares it, and the direction that bites is
     the other one — a family tree with no text engine on disk mounts a reader
     with no `measure` on it, which `test_vanilla.py` and `test_polished.py` check
     over fixtures. That is the degrade-to-absence rule as a test rather than as a
@@ -42,6 +42,7 @@ if this file accepts any of them.
 
 from __future__ import annotations
 
+import glob
 import inspect
 import sys
 import tempfile
@@ -55,13 +56,27 @@ from pretkit import contract as seam  # noqa: E402
 from pretkit import contract  # noqa: E402
 from pretkit.contract import conformance  # noqa: E402
 
-#: Where a tree for each registered plugin is checked out. Keyed by the name the
-#: plugin registers under, so the battery covers **whatever this repo ships** —
-#: three adapters here, two in the IDE's own repo, one in prism's. A hand-written
-#: list of adapters would instead make this a monorepo instrument, failing a repo
-#: for the adapters it does not carry rather than checking the one it does.
-CHECKOUTS = {"prism": "pokeprism", "vanilla": "pokecrystal",
-             "polished": "polishedcrystal"}
+def pret_trees() -> list[Path]:
+    """Every pret tree on this machine, where a checkout is looked for.
+
+    Found, not listed. A table of plugin name -> folder is the monorepo
+    instrument this file is trying not to be: it names the trees one project
+    happens to use, cannot cover a plugin whose folder it has never heard of,
+    and puts hack names in the one repo that owns no hack. What a tree *is* is
+    `main.asm` beside a `Makefile`; which hack it belongs to is the seam's
+    question, and asking it that way is the thing being tested.
+
+    `checkout_search_path` is handed `*` as the folder, so it yields the
+    library's own search path with every folder in it rather than one, and the
+    places looked in here cannot drift from the places a command looks in.
+    """
+    seen: dict[Path, None] = {}
+    for pattern in paths.checkout_search_path("*"):
+        for found in sorted(glob.glob(str(pattern))):
+            root = Path(found)
+            if (root / "main.asm").exists() and (root / "Makefile").exists():
+                seen.setdefault(root.resolve(), None)
+    return list(seen)
 
 
 def registered_plugins() -> list[str]:
@@ -103,22 +118,30 @@ def tried(fn) -> bool:
 
 
 def mounted() -> dict[str, seam.Hack]:
-    """Every tree on this machine, mounted once. A tree that isn't checked out
-    is skipped loudly — a battery that silently covers one adapter is worse
-    than no battery, because the report still says "all ok"."""
-    out = {}
+    """Every tree on this machine, mounted once, keyed by the hack that claimed it.
+
+    A plugin no tree here claims is named rather than passed over: a battery that
+    silently covers one adapter is worse than no battery, because the report still
+    says "all ok". A tree nothing claims is counted instead, since a pret
+    checkout belonging to some other project is not this file's business.
+    """
+    out: dict[str, seam.Hack] = {}
     plugins = registered_plugins()
     say(f"  plugins registered here: {', '.join(plugins) or 'none'}")
+    trees = pret_trees()
+    unclaimed = 0
+    for root in trees:
+        try:
+            hack = m.mount(root)
+        except m.UnknownTree:
+            unclaimed += 1
+            continue
+        out.setdefault(hack.name, hack)
+    say(f"  pret trees found: {len(trees)}, of which {unclaimed} claimed by no "
+        f"single registered adapter")
     for name in plugins:
-        folder = CHECKOUTS.get(name)
-        if folder is None:
-            say(f"  SKIP {name}: no checkout is recorded for it")
-            continue
-        root = paths.find_checkout(folder)
-        if not root.exists():
-            say(f"  SKIP {name}: no checkout at {root}")
-            continue
-        out[name] = m.mount(root)
+        if name not in out:
+            say(f"  SKIP {name}: no tree here that it claims")
     return out
 
 
