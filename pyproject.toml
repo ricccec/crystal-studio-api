@@ -1,17 +1,25 @@
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "crystal-studio-plugin-api"
 version = "0.5.0"
 description = "Write a Crystal Studio plugin for your own Pokémon Gen-2 hack"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{name = "ricccec", email = "65662894+ricccec@users.noreply.github.com"}]
 requires-python = ">=3.10"
 dependencies = ["pret-toolkit"]
 
 # `namespaces = true` is the whole split: `pretkit` is a
 # PEP 420 namespace package with no `__init__.py`, so these
 # distributions install side by side and answer as one package.
+[project.urls]
+Source = "https://github.com/ricccec/crystal-studio-plugin-api"
+Issues = "https://github.com/ricccec/crystal-studio-plugin-api/issues"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 namespaces = true
