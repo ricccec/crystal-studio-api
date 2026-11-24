@@ -30,10 +30,14 @@ it in one sitting. That is the intended size.
 ## Install
 
 ```bash
-pip install crystal-studio-plugin-api
+pip install git+https://github.com/ricccec/pret-toolkit \
+            git+https://github.com/ricccec/crystal-studio-plugin-api
 ```
 
-Requires Python 3.10 or newer. Its only dependency is `pret-toolkit`.
+Not on PyPI yet. Every dependency in this family is named by URL in the
+same command, which is how pip finds the ones PyPI does not have.
+
+Requires Python 3.11 or newer. Its only dependency is `pret-toolkit`.
 
 ## Registering an adapter
 
@@ -83,6 +87,11 @@ python scripts/run-tests.py
 
 Plain scripts, not pytest. The protocol half runs anywhere; the half that mounts
 real game trees skips, and says which tree it wanted, when you have none.
+
+## Disclaimer
+
+Not affiliated with or endorsed by Nintendo, Game Freak, Creatures or The
+Pokémon Company. Pokémon is a trademark of Nintendo.
 
 ## Licence
 

@@ -156,13 +156,11 @@ class Action:
         whose subject doesn't exist yet, so it is the one action you cannot check
         by looking at the map. Everything else acts *on* a map already on screen.
 
-        Untyped on purpose, and it is the one hole the carve leaves. The only
-        caller is the *read* adapter of the same hack that shipped the action
-        (`hacks/prism/read.Reader.sketch`), which turns what comes back into a
-        neutral `Blocks` before the studio sees it. So the value is one
-        adapter handing itself its own record, and naming prism's `BlockData`
-        here to say so would be the base importing an adapter to describe a
-        journey it is not on.
+        Untyped on purpose. The value is meant for the *read* adapter of the
+        same hack that shipped the action, which turns it into a neutral
+        `Blocks` before the studio sees it. So it is one adapter handing
+        itself its own record, and naming that record's type here would be
+        the contract importing an adapter.
 
         Raises :class:`ActionError` for a form that isn't ready, which is not a
         failure — it is what the panel says instead of a picture.

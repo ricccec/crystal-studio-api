@@ -59,8 +59,8 @@ from pretkit.contract import conformance  # noqa: E402
 def pret_trees() -> list[Path]:
     """Every pret tree on this machine, where a checkout is looked for.
 
-    Found, not listed. A table of plugin name -> folder is the monorepo
-    instrument this file is trying not to be: it names the trees one project
+    Found, not listed. A table of plugin name -> folder is the instrument
+    this file is trying not to be: it names the trees one project
     happens to use, cannot cover a plugin whose folder it has never heard of,
     and puts hack names in the one repo that owns no hack. What a tree *is* is
     `main.asm` beside a `Makefile`; which hack it belongs to is the seam's
