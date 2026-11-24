@@ -23,3 +23,9 @@ Issues = "https://github.com/ricccec/crystal-studio-plugin-api/issues"
 [tool.setuptools.packages.find]
 where = ["src"]
 namespaces = true
+
+[tool.pret-test]
+
+[tool.pret-test.upstreams.pokecrystal]
+url = "https://github.com/pret/pokecrystal"
+commit = "31880ea20ea44f79ebd459b1e735ae1f15db1671"
