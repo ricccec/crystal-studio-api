@@ -50,11 +50,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from pretkit.shared import paths  # noqa: E402
-from pretkit.contract import mount as m  # noqa: E402
-from pretkit import contract as seam  # noqa: E402
-from pretkit import contract  # noqa: E402
-from pretkit.contract import conformance  # noqa: E402
+from pret_toolkit.shared import paths  # noqa: E402
+from crystal_studio_api import mount as m  # noqa: E402
+import crystal_studio_api as seam  # noqa: E402
+import crystal_studio_api as contract  # noqa: E402
+from crystal_studio_api import conformance  # noqa: E402
 
 def pret_trees() -> list[Path]:
     """Every pret tree on this machine, where a checkout is looked for.

@@ -1,4 +1,4 @@
-# crystal-studio-plugin-api
+# crystal-studio-api
 
 Write a [Crystal Studio](https://github.com/ricccec/crystal-studio) plugin for
 your own Pokémon Gen-2 hack.
@@ -31,7 +31,7 @@ it in one sitting. That is the intended size.
 
 ```bash
 pip install git+https://github.com/ricccec/pret-toolkit \
-            git+https://github.com/ricccec/crystal-studio-plugin-api
+            git+https://github.com/ricccec/crystal-studio-api
 ```
 
 Not on PyPI yet. Every dependency in this family is named by URL in the
@@ -62,8 +62,8 @@ room — and compares *signatures*, not just method names, because
 renamed a parameter and then fails at whichever pane asks third:
 
 ```python
-from pretkit.contract import Reads
-from pretkit.contract.conformance import check_protocol
+from crystal_studio_api import Reads
+from crystal_studio_api.conformance import check_protocol
 
 problems = check_protocol(MyReader(root), Reads)
 assert not problems, problems
@@ -71,13 +71,15 @@ assert not problems, problems
 
 Return annotations are deliberately not compared; the module docstring says why.
 
-## The namespace
+## The package
 
-The import name is `pretkit`, a [PEP 420][pep420] namespace package shared with
-`pret-toolkit` and the other Crystal Studio distributions. This package imports
-`pret-toolkit` and nothing above it.
+The import name is `crystal_studio_api`:
 
-[pep420]: https://peps.python.org/pep-0420/
+```python
+from crystal_studio_api import Reads, Writes, Npc, Warp
+```
+
+It imports `pret_toolkit` and nothing above it.
 
 ## Tests
 
@@ -99,7 +101,7 @@ Each tree is pinned to the one commit the tests were written against, in
 - `pokecrystal` — [pret/pokecrystal](https://github.com/pret/pokecrystal) at `31880ea`
 
 `pret-test` checks out a clean copy of each pinned commit into
-`~/.cache/pretkit/` — taken from your own checkout when it has the commit, from
+`~/.cache/pret-toolkit/` — taken from your own checkout when it has the commit, from
 the URL otherwise — so neither your edits nor your branch change the result.
 Your checkout is found the way every command here finds one: `$<NAME>_TREE`
 (`$POKECRYSTAL_TREE`, say), or a conventional place such as `~/code/<name>`.

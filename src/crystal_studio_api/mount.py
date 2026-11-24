@@ -135,7 +135,7 @@ def _load_hack_from_path(path: Path) -> tuple[str, Callable[[], Callable]]:
     `claim.py` inside a directory, or the file itself, named for its package so
     an override of `prism` replaces prism. Loaded this way it has no package to
     hang a relative import on, so the module must reach the contract by its
-    installed name (`pretkit.contract`) — the package a third-party
+    installed name (`crystal_studio_api`) — the package a third-party
     adapter depends on anyway."""
     claim = path / "claim.py" if path.is_dir() else path
     name = claim.parent.name if claim.name == "claim.py" else claim.stem

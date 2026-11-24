@@ -36,7 +36,7 @@ from __future__ import annotations
 from collections.abc import Hashable
 from dataclasses import dataclass, field
 
-from ..shared.coords import Tile
+from pret_toolkit.shared.coords import Tile
 
 
 @dataclass(frozen=True)

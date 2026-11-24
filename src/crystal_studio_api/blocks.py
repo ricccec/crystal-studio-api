@@ -17,7 +17,7 @@ from dataclasses import dataclass
 # exactly one place you can stand, and the grid's cursor lands on a quadrant.
 # How an adapter arrives at the four colours is its own affair; prism averages
 # real pixels, an adapter without decoded graphics may answer from palettes.
-from ..shared.swatches import Rgb, Swatch  # noqa: F401
+from pret_toolkit.shared.swatches import Rgb, Swatch  # noqa: F401
 
 
 @dataclass(frozen=True)

@@ -15,7 +15,7 @@ from dataclasses import dataclass
 class TextRef:
     """A block of dialogue already in the game, as prose. The adapter parses
     its own text macros into this; the macros go back positionally on the way
-    home (`hacks/prism/text.reword`), which is what lets the record hold none."""
+    home (`pokeprism_devtools/prism/dialogue/text.reword`), which is what lets the record hold none."""
     label: str          # what a script jumps to, or `.local` under an owner
     owner: str          # the top-level label that owns it
     lineno: int

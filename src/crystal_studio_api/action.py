@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ..shared.edits import Edit
+from pret_toolkit.shared.edits import Edit
 from .ref import Ref
 
 
@@ -126,7 +126,7 @@ class Action:
         """What other fields should say, now that `changed` has changed.
 
         Picking a trainer class fills in the sprite and the palette that class
-        usually wears — see `hacks/prism/battles/trainerstats.py`, which *counts* rather than
+        usually wears — see `pokeprism_devtools/prism/battles/trainerstats.py`, which *counts* rather than
         guessing, because the sprite for a `SKIER` is `SPRITE_BUENA` and no rule
         was ever going to produce that.
 
