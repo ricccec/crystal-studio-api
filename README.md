@@ -1,124 +1,107 @@
 # crystal-studio-api
 
-Write a [Crystal Studio](https://github.com/ricccec/crystal-studio) plugin for
-your own Pokémon Gen-2 hack.
+**Write a [Crystal Studio](https://github.com/ricccec/crystal-studio) plugin for your own Pokémon Gen-2 hack.**
 
-Crystal Studio is a terminal IDE for pret/RGBDS disassemblies. It ships adapters
-for pokecrystal and Polished Crystal; this package is what you implement to teach
-it a *third* tree — yours — without forking it or patching it.
+Crystal Studio is a terminal IDE for [pret](https://github.com/pret)-style disassemblies built with [RGBDS](https://github.com/gbdev/rgbds). This package is the contract between the IDE and a disassembly repo: implement it in an adapter, and the IDE can work with your custom hack codebase without being forked or patched:
 
-## What is in here
+```text
+                         Crystal Studio
+                            (the IDE)
+                                │
+                                ▼
+                       crystal-studio-api
+                                ▲
+        ┌───────────────┬───────┴───────┬───────────────┐
+        │               │               │               │
+     vanilla        polished           ...        your adapter
+  (pokecrystal)    (Polished)
+```
 
-The noun list and the question list, and nothing else. Nothing in this package
-parses a file, opens one, or draws anything: it exists to be *pointed at*, so the
-IDE and an adapter depend on it instead of on each other.
-
-- **The nouns** — what a Gen-2 map is made of: the six lists of things standing on
-  it, the header and its edges, its shape, its encounters, its dialogue, and the
-  opaque handle that names any one of them.
-- **The questions** — the capabilities an adapter declares: `Reads`, `Writes`,
-  `Lints`, `Plays`.
-
-A capability you do not implement degrades to **absence** on the other side — no
-lint panel, no boot key, no edit forms. Never a crash, and never an `if <hack
-name>`. The mount point is the only module allowed to know that hacks exist at
-all, and it knows them as a registry of names it asks in turn.
-
-It is about 1,400 lines across 17 modules, and the package docstring says to read
-it in one sitting. That is the intended size.
-
-## Install
+## Installation
 
 ```bash
 pip install git+https://github.com/ricccec/pret-toolkit \
             git+https://github.com/ricccec/crystal-studio-api
 ```
 
-Not on PyPI yet. Every dependency in this family is named by URL in the
-same command, which is how pip finds the ones PyPI does not have.
+**Requirements:** Python 3.11 or newer. The only dependency is [pret-toolkit](https://github.com/ricccec/pret-toolkit).
 
-Requires Python 3.11 or newer. Its only dependency is `pret-toolkit`.
+The package is not on PyPI yet. Naming every dependency by URL in one command is how pip finds the ones PyPI doesn't have.
 
-## Registering an adapter
+> **API stability:** the API is not stable before 1.0. Pin a commit when you depend on it.
 
-An adapter is an ordinary distribution that advertises one entry point:
+## What's in the API
 
-```toml
-[project.entry-points."crystal_studio.plugins"]
-mygame = "mygame.claim"
-```
+The API is deliberately small and self-contained. Its docstrings are the reference, and the [package docstring](src/crystal_studio_api/__init__.py) is the place to start.
 
-The module it names exposes `claims(root)`, which returns a built adapter when it
-recognises the tree, nothing when it does not, or a `NearMiss` carrying a reason.
-Recognition is inverted on purpose: each hack answers for itself, and the mount
-only counts the answers. The three in-tree adapters register through this exact
-path, which is the only way to know the seam works before someone depends on it.
+The API is built around three parts:
+- **The mount** is the API's only runtime component. It allows Crystal Studio to discover installed adapters and select the one that recognizes the hack repo being opened.
+- **The protocols** are the capabilities. Each hack adapter implements (some of) them. `Reads` is the one required, the bare minimum for an adapter to be able to claim a repo.
+- **The records** are the shared data types. The adapter builds them and Crystal Studio reads them.
 
-## Checking your adapter
+### Protocols are the questions: what an adapter can answer
 
-`conformance.py` checks an adapter against the protocols without the IDE in the
-room — and compares *signatures*, not just method names, because
-`isinstance` against a `runtime_checkable` Protocol passes an adapter that
-renamed a parameter and then fails at whichever pane asks third:
+| Capability | Protocol | When it's absent, the IDE has… |
+|---|---|---|
+| Read the hack repo (**required**) | [`Reads`](src/crystal_studio_api/reads.py): nine questions, from `maps()` to `texts()` | nothing to open |
+| Measure text in tiles | [`Measures`](src/crystal_studio_api/reads.py) | no tile ruler under the text box |
+| Edit the hack repo | [`Writes`](src/crystal_studio_api/writes.py) | no edit forms: the repo opens read-only |
+| Lint the hack repo | [`Lints`](src/crystal_studio_api/lints.py) | no lint panel |
+| Build and boot the ROM | [`Plays`](src/crystal_studio_api/plays.py) | no boot key |
 
-```python
-from crystal_studio_api import Reads
-from crystal_studio_api.conformance import check_protocol
+### Records are the nouns: what a Gen-2 map is made of
 
-problems = check_protocol(MyReader(root), Reads)
-assert not problems, problems
-```
+| Module | Records |
+|---|---|
+| [`events`](src/crystal_studio_api/events.py) | The six lists of things standing on a map: `Npc`, `Trainer`, `Prop`, `Signpost`, `Warp`, `Trigger`, held together in `MapTables` |
+| [`attributes`](src/crystal_studio_api/attributes.py) | The header (`Attributes`), its edges (`Link`), and the roof its group loads (`Roof`) |
+| [`blocks`](src/crystal_studio_api/blocks.py) | The map's shape (`Blocks`), and a not-yet-created one (`Sketch`) |
+| [`wild`](src/crystal_studio_api/wild.py) | Encounters (`WildMon`) |
+| [`dialogue`](src/crystal_studio_api/dialogue.py) | The map's text (`TextRef`), and how it measures in tiles (`TextPreview`, `Measured`) |
+| [`ref`](src/crystal_studio_api/ref.py) | `Ref`, the opaque handle that names any one of the above |
+| [`action`](src/crystal_studio_api/action.py), [`diagnostic`](src/crystal_studio_api/diagnostic.py) | A staged change and the form fields it declares (`Action`, `Field`), and a lint finding (`Diagnostic`) |
 
-Return annotations are deliberately not compared; the module docstring says why.
+> **Missing capabilities degrade to absence:** Each adapter declares what it can do in one [`Hack`](src/crystal_studio_api/hack.py) record. A capability it leaves out is simply **absent** in Crystal Studio: it never crashes the IDE.
 
-## The package
+## Writing an adapter
 
-The import name is `crystal_studio_api`:
+An adapter is an ordinary Python distribution. It needs at least these three things:
 
-```python
-from crystal_studio_api import Reads, Writes, Npc, Warp
-```
+1. an entry point in the `crystal_studio.plugins` group;
+2. a `claims(root)` function that recognizes your hack repo and returns a `Hack`;
+3. a reader that answers `Reads`.
 
-It imports `pret_toolkit` and nothing above it.
+[docs/writing-an-adapter.md](docs/writing-an-adapter.md) walks you through the process of building an adapter, with a minimal scaffold you can copy.
+
+## Existing adapters
+
+There are three adapters today, in two distributions:
+
+| Adapter | For | Ships in |
+|---|---|---|
+| `vanilla` | [pokecrystal](https://github.com/pret/pokecrystal) | [crystal-studio](https://github.com/ricccec/crystal-studio) |
+| `polished` | [Polished Crystal](https://github.com/Rangi42/polishedcrystal) | [crystal-studio](https://github.com/ricccec/crystal-studio) |
+| `prism` | [Pokémon Prism](https://github.com/ricccec/pokeprism) | [pokeprism-devtools](https://github.com/ricccec/pokeprism-devtools) |
 
 ## Tests
 
+Tests use `pret-test`, which comes with [pret-toolkit](https://github.com/ricccec/pret-toolkit).
+
 ```bash
-pret-test               # the whole suite, against the pinned game trees
-pret-test --worktree    # the same, against your own checkouts, edits and all
+pret-test               # the whole suite, against the pinned game repos
+pret-test --worktree    # the same, against your own checkouts
 ```
 
-Plain scripts, not pytest: each prints `ok`/`FAIL` lines and exits non-zero.
-`pret-test` ships with `pret-toolkit`, so it is on `$PATH` once this repo is
-installed; run it from anywhere inside the repo.
+The tests are plain scripts, not pytest: each prints `ok`/`FAIL` lines and exits non-zero on failure. Go check [pret-toolkit's README](https://github.com/ricccec/pret-toolkit#testing) for more info.
 
-The protocol half runs anywhere. The half that mounts real game trees reads
-the pinned ones, and finds no plugin for them unless an adapter is installed
-alongside.
-Each tree is pinned to the one commit the tests were written against, in
-`pyproject.toml` under `[tool.pret-test.upstreams]`:
+Keep in mind that these tests check the API itself, and every adapter installed alongside it. To check your own adapter from its own tests, see [Checking your adapter](docs/writing-an-adapter.md#checking-your-adapter).
 
-- `pokecrystal` — [pret/pokecrystal](https://github.com/pret/pokecrystal) at `31880ea`
-
-`pret-test` checks out a clean copy of each pinned commit into
-`~/.cache/pret-toolkit/` — taken from your own checkout when it has the commit, from
-the URL otherwise — so neither your edits nor your branch change the result.
-Your checkout is found the way every command here finds one: `$<NAME>_TREE`
-(`$POKECRYSTAL_TREE`, say), or a conventional place such as `~/code/<name>`.
-`pret-test --fetch` fetches them and prints where they are. The copies hold no
-build output, so checks that need a ROM skip until you run `make` in one. A
-skipped check is counted and reported rather than passed, and `--strict` fails
-the run on one.
-
-`--worktree` is for seeing what your own edits do. A test that fails there
-because of an edit in *your* tree is a fact about your checkout: record it in
-`.known-red.json`, which is git-ignored and counts only in `--worktree` runs.
+> **One caveat:** some checks need an adapter. This repository ships none, so they find nothing to mount unless [crystal-studio](https://github.com/ricccec/crystal-studio) or another adapter is installed alongside.
 
 ## Disclaimer
 
-Not affiliated with or endorsed by Nintendo, Game Freak, Creatures or The
-Pokémon Company. Pokémon is a trademark of Nintendo.
+This project is not affiliated with or endorsed by Nintendo, Game Freak, Creatures, or The Pokémon Company. Pokémon is a trademark of Nintendo.
 
-## Licence
+## License
 
-MIT. See `LICENSE`.
+MIT. See [LICENSE](LICENSE).
